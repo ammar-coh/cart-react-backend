@@ -16,7 +16,7 @@ require("dotenv").config({ path: './.env' });
 
 
 // Setup server port
-var port = process.env.PORT || 8080;
+var port = process.env.PORT || 8081;
 
 // Send message for default URL
 //app.get('/', (req, res) => res.send('Hello World with Express'));
@@ -25,7 +25,7 @@ var productRouter = require('./routes/product');
 var usersRouter = require('./routes/users');
 var cartsRouter = require('./routes/cart');
 
-var port = process.env.PORT || 8080;
+
 
 var app = express();
 app.use(cors())
@@ -33,6 +33,7 @@ app.use(bodyParser.urlencoded({
   extended: true
 }));
 app.use(bodyParser.json());
+
 // Connect to Mongoose and set connection variable
 const connection_url = 
 'mongodb+srv://ammar:algo@cluster0.iqbpm.mongodb.net/cartdb?retryWrites=true&w=majority';
@@ -74,6 +75,7 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
+
 app.listen(port, function () {
   //console.log("Running RestHub on port " + port);
 });
