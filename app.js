@@ -10,6 +10,7 @@ const { createServer } = require("http");
 const { Server } = require("socket.io");
 const ChatRoom = require("./chatRoomModel");
 const User = require("./userModel");
+const Notification = require("./notificationModel");
 //import cors from 'cors';
 
 let mongoose = require("mongoose");
@@ -81,24 +82,31 @@ app.use(function (err, req, res, next) {
 });
 
 // socet.io user
+const userSocketMap = new Map();
 
 // Socket.IO
 io.on("connection", (socket) => {
   console.log(`Socket ${socket.id} connectedd`);
   console.log("socket.rooms", socket.rooms);
   // save socketID in Database
-  const users = [];
-  for (let [id, socket] of io.of("/").sockets) {
-    users.push({
-      userID: id,
-      username: socket.username,
-    });
-  }
-  socket.emit("users", users);
+  // const users = [];
+  // for (let [id, socket] of io.of("/").sockets) {
+  //   users.push({
+  //     userID: id,
+  //     username: socket.username,
+  //   });
+  // }
+  // socket.emit("users", users);
   //notify existing users
-  socket.broadcast.emit("user connected", {
-    userID: socket.id,
-    username: socket.username,
+  // socket.broadcast.emit("user connected", {
+  //   userID: socket.id,
+  //   username: socket.username,
+  // });
+
+  socket.on("setUserId", ({ userId }) => {
+    // Store the user ID and socket ID association
+    userSocketMap.set(userId, socket.id);
+    console.log(`User ID ${userId} associated with Socket ID ${socket.id}`);
   });
   // Join Private Room
   socket.on("private_room", async ({ room_id, userID, participant }) => {
@@ -260,23 +268,95 @@ io.on("connection", (socket) => {
   socket.on(
     "notification_channel",
     async ({ message, userID, participant }) => {
-      console.log("notification_room ", message);
       let notification = {
         author: message.author,
         author_id: message.author_id,
         message: message.message,
       };
-      socket.emit("notification_receive", notification);
-      // let recepientInstance = new User();
+      let finalNotificationObject;
+
       let recepient = await User.findById({
-        _id: userID,
+        _id: participant,
       });
-      console.log("recepient of notification", recepient);
-      // socket.emit("notification_message", message);
+      var convertCollectionToObj = recepient.toObject();
+      if (convertCollectionToObj.hasOwnProperty("notification")) {
+        let recepient_new_notification_id =
+          await recepient.notification._id.toString();
+        let recepient_notifications = await Notification.findById({
+          _id: recepient_new_notification_id,
+        });
+        for (let i = 0; i < recepient_notifications.messages?.length; i++) {
+          if (recepient_notifications.messages[i].author_id == userID) {
+            recepient_notifications.messages.splice(i, 1);
+            i--;
+          }
+        }
+        console.log("updeated", recepient_notifications.messages);
+        recepient_notifications.messages.push(notification);
+        let updatedMessagesArray = recepient_notifications.messages;
+        let messageUpdated = {
+          messages: updatedMessagesArray,
+        };
+        let options = { new: true };
+        let notificationsMessagesSaved = await Notification.findByIdAndUpdate(
+          recepient_new_notification_id,
+          messageUpdated,
+          options
+        );
+        finalNotificationObject = await recepient_notifications.messages;
+      } else {
+        let new_notification_instance = await new Notification();
+        new_notification_instance.save();
+        recepient.notification = await new_notification_instance;
+        await recepient.save();
+        let recepient_new_notification_id =
+          await recepient.notification._id.toString();
+        let recepient_notifications = await Notification.findById({
+          _id: recepient_new_notification_id,
+        });
+       
+        await recepient_notifications.messages.push(notification);
+        let updatedMessagesArray = recepient_notifications.messages;
+        let messageUpdated = {
+          messages: updatedMessagesArray,
+        };
+        let options = { new: true };
+        let notificationsMessagesSaved = await Notification.findByIdAndUpdate(
+          recepient_new_notification_id,
+          messageUpdated,
+          options
+        );
+        finalNotificationObject = await recepient_notifications.messages;
+      }
+      console.log("saved messages notifications", finalNotificationObject);
+      let notification_messages_sorted = await finalNotificationObject.filter(
+        (i) => i.author_id == userID && i.is_read == false
+      );
+      console.log("notification_final", notification_messages_sorted);
+      let participant_socket_id = userSocketMap.get(participant);
+      console.log("recepient socket id", participant_socket_id);
+      socket.emit("notification_message", notification);
+      socket.to(participant_socket_id).emit("notification_message", message);
     }
   );
+  //notification join room
+  socket.on("join_notification_room", async ({ notification_roomID }) => {
+    console.log("notification_room_joined", notification_roomID);
+    socket.join(notification_roomID);
+  });
+  // notification leave room
+  socket.on(
+    "leave_notification_room",
+    async ({ notification_roomID, userID }) => {
+      console.log("notification_room_leave", notification_roomID);
+      socket.join(notification_roomID);
+    }
+  );
+
   socket.on("disconnect", () => {
     console.log(`Socket ${socket.id} disconnected`);
+    // userSocketMap.delete(userId);
+    // console.log(`User ID ${userId} disconnected`);
   });
 });
 
