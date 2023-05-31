@@ -22,7 +22,9 @@
     "jsonwebtoken": "^8.5.1",
     "mongodb": "^4.2.1",
     "mongoose": "^6.0.14",
-    "morgan": "~1.9.1"
+    "morgan": "~1.9.1",
+    "socket.io": "^4.6.1",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.4.0"
   },
   "description": "Backend apis for react app",
   "main": "app.js",
@@ -35,5 +37,9 @@
   "bugs": {
     "url": "https://github.com/ammar-algo/cart-react-backend/issues"
   },
-  "homepage": "https://github.com/ammar-algo/cart-react-backend#readme"
+  "homepage": "https://github.com/ammar-algo/cart-react-backend#readme",
+  "optionalDependencies": {
+    "bufferutil": "^4.0.7",
+    "utf-8-validate": "^5.0.10"
+  }
 }

@@ -6,7 +6,7 @@ const auth = require("../auth");
 // Product routes
 var productController = require('../productController');
 router.get('/list',auth,  productController.index)
-router.post('/list', auth, productController.new);
+router.post('/list', productController.new);
 router.put('/list/:product_id', auth, productController.updating)
 router.delete('/list/:product_id',auth,  productController.delete);
 
